@@ -1,0 +1,37 @@
+module(
+    name = "optimization-playground",
+    version = "0.1.0",
+)
+
+# Root module dependencies.
+bazel_dep(name = "abseil-cpp", version = "20260107.0", repo_name = "com_google_absl")
+bazel_dep(name = "abseil-py", version = "2.1.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_cc", version = "0.2.11")
+bazel_dep(name = "platforms", version = "1.0.0")
+
+bazel_dep(name = "google_benchmark", version = "1.9.5", dev_dependency = True)
+bazel_dep(name = "googletest", version = "1.17.0", dev_dependency = True)
+
+bazel_dep(name = "protobuf", version = "34.0.bcr.1")
+bazel_dep(name = "rules_python", version = "1.5.4")
+
+PYTHON_VERSION = "3.12"
+
+PYTHON_VERSION_NAME = PYTHON_VERSION.replace(".", "_")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    python_version = PYTHON_VERSION,
+)
+
+libomp_ext = use_extension("//third_party:libomp_extension.bzl", "libomp_ext")
+use_repo(libomp_ext, "libomp")
+
+# Hedron Compile Commands Extractor
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    commit = "abb61a688167623088f8768cc9264798df6a9d10",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+)

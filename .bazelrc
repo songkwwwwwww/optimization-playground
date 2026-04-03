@@ -1,0 +1,18 @@
+# Standard C++23 configuration
+build --cxxopt=-std=c++23
+build --host_cxxopt=-std=c++23
+
+# Display color in the terminal
+common --color=yes
+
+# Better error messages
+build --verbose_failures
+build --sandbox_debug
+
+# Optimization
+build --copt=-O3
+build --copt=-march=native
+build --copt=-ffast-math
+
+# Support for Python
+# build --python_path=python3
