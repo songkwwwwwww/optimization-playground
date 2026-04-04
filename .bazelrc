@@ -14,5 +14,12 @@ build --copt=-O3
 build --copt=-march=native
 build --copt=-ffast-math
 
+# ThreadSanitizer (use: bazel test --config=tsan ...)
+build:tsan --copt=-fsanitize=thread
+build:tsan --linkopt=-fsanitize=thread
+build:tsan --copt=-g
+build:tsan --copt=-O1
+build:tsan --copt=-fno-omit-frame-pointer
+
 # Support for Python
 # build --python_path=python3

@@ -15,7 +15,60 @@ constexpr std::size_t hardware_destructive_interference_size = 64;
 #endif
 
 /**
+ * Stage 0: Broken (Relaxed-Only)
+ *
+ * Intentionally incorrect implementation that uses memory_order_relaxed for all
+ * operations. On weakly-ordered architectures (ARM64), the consumer may read
+ * stale or partially-written buffer data because there is no happens-before
+ * relationship between the producer's write and the consumer's read.
+ *
+ * Use this with ThreadSanitizer (`bazel test --config=tsan ...`) to observe
+ * data-race reports.
+ *
+ * DO NOT use in production.
+ */
+template <typename T, std::size_t Capacity>
+class SPSCQueueBroken {
+  static_assert((Capacity & (Capacity - 1)) == 0,
+                "Capacity must be a power of two");
+
+ public:
+  SPSCQueueBroken() : head_(0), tail_(0) {}
+
+  template <typename U>
+  bool Push(U&& value) noexcept(std::is_nothrow_assignable_v<T&, U&&>) {
+    const size_t h = head_.load(std::memory_order_relaxed);
+    const size_t t = tail_.load(std::memory_order_relaxed);
+    if (Next(h) == t) return false;
+    buffer_[h] = std::forward<U>(value);
+    head_.store(Next(h), std::memory_order_relaxed);
+    return true;
+  }
+
+  bool Pop(T& value) noexcept(std::is_nothrow_assignable_v<T&, T&&>) {
+    const size_t h = head_.load(std::memory_order_relaxed);
+    const size_t t = tail_.load(std::memory_order_relaxed);
+    if (h == t) return false;
+    value = std::move(buffer_[t]);
+    tail_.store(Next(t), std::memory_order_relaxed);
+    return true;
+  }
+
+ private:
+  size_t Next(size_t i) const noexcept { return (i + 1) & (Capacity - 1); }
+
+  T buffer_[Capacity];
+  std::atomic<size_t> head_;
+  std::atomic<size_t> tail_;
+};
+
+/**
  * Stage 1: Naive (SeqCst, No Padding)
+ *
+ * Uses default memory_order_seq_cst for all atomic operations. head_ and tail_
+ * are placed right after buffer_ with no alignment directive, so they will
+ * likely reside on the same cache line — exhibiting false sharing between the
+ * producer (writes head_) and consumer (writes tail_).
  */
 template <typename T, std::size_t Capacity>
 class SPSCQueueNaive {
@@ -46,6 +99,8 @@ class SPSCQueueNaive {
  private:
   size_t Next(size_t i) const noexcept { return (i + 1) & (Capacity - 1); }
 
+  // head_ and tail_ intentionally unpadded: they likely share a cache line,
+  // causing false sharing between producer and consumer cores.
   T buffer_[Capacity];
   std::atomic<size_t> head_;
   std::atomic<size_t> tail_;
@@ -90,6 +145,11 @@ class SPSCQueueAcqRel {
 
 /**
  * Stage 3: Padded (Acquire-Release + Alignment)
+ *
+ * Eliminates false sharing by placing head_, tail_, and buffer_ on separate
+ * cache lines. Note: member order differs from Naive/AcqRel (indices before
+ * buffer) so that alignas applies cleanly to each atomic without the buffer
+ * straddling them.
  */
 template <typename T, std::size_t Capacity>
 class SPSCQueuePadded {
