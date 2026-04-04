@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <utility>
 
 namespace lockfree {
 
@@ -149,6 +150,10 @@ class SPSCQueuePadded {
 
 /**
  * Stage 4: Cached (The "Outrageous" Optimization)
+ *
+ * NOTE: This optimization can cause significant performance regression (up to 5-6x slower)
+ * on Unified Memory Architectures like Apple Silicon (ARM64) where shared L2/L3 caches
+ * make atomic loads very efficient, while extra branching and logic introduce stalls.
  */
 template <typename T, std::size_t Capacity>
 class SPSCQueueCached {

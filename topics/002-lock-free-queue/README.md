@@ -15,16 +15,16 @@ Run with `bazel run -c opt //topics/002-lock-free-queue:spsc_queue_bench`.
 
 | Implementation | Throughput (items/sec) | Note |
 | :--- | :--- | :--- |
-| **Naive** | ~178 M/s | Surprisingly fast on ARM64. |
-| **Acquire-Release** | ~164 M/s | Slightly slower than Naive? (Likely due to M-series optimization). |
-| **Padded** | ~189 M/s | **Fastest.** Padding helps by separating the write-heavy indexes. |
-| **Cached** | ~22 M/s | **Surprisingly slow.** Why? |
+| **Naive** | ~185 M/s | Efficient on ARM64 due to native load-acquire/store-release. |
+| **Acquire-Release** | ~186 M/s | Minimal overhead difference from Naive on this architecture. |
+| **Padded** | ~200 M/s | **Fastest.** Eliminates false sharing between indices. |
+| **Cached** | ~35 M/s | **Performance Regression.** 5-6x slower due to branch overhead. |
 
 ### Analysis of "Cached" Performance
-The "Cached" optimization is intended to reduce Last Level Cache (LLC) misses by avoiding reads of the atomic index owned by the other thread. However, on Apple Silicon:
-- The Unified Memory Architecture and large shared L2 cache within a cluster may make cache coherence traffic very cheap.
-- The overhead of maintaining `head_cache_` and `tail_cache_` might exceed the benefit if the threads are running on the same cluster.
-- If the producer and consumer are extremely fast and the queue frequently hits "full" or "empty" states, the cached version effectively falls back to the padded version but with more branch overhead.
+The "Cached" optimization (Stage 4) is intended to reduce cross-core cache coherence traffic. However, on Apple Silicon:
+- **Shared L2/L3 Cache**: Cores within a cluster share a fast L2 cache, making `atomic load` very cheap.
+- **Branch vs. Atomic**: The overhead of additional branching (`if (cache == value)`) and local variable updates outweighs the cost of a direct atomic load from the shared cache.
+- **Pipeline Stalls**: Extra logic can introduce data dependencies that hinder the CPU's out-of-order execution engine.
 
 ## How to Run
 
