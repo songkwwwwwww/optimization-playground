@@ -1,6 +1,6 @@
 # SPSC Queue Optimization Study
 
-This study explores the performance of a Single Producer Single Consumer (SPSC) Bounded Queue, progressing from a naive implementation to highly optimized versions discussed in the talk "Beyond Sequential Consistency" by Chris Frretz (CppCon).
+This study explores the performance of a Single Producer Single Consumer (SPSC) Bounded Queue, progressing from a naive implementation to highly optimized versions discussed in the talk "Beyond Sequential Consistency" by Chris Fretz (CppCon).
 
 ## Implementations
 
@@ -40,5 +40,5 @@ bazel run -c opt //topics/002-lock-free-queue:spsc_queue_bench
 
 ## References
 - [SPSC Optimization Guide](docs/SPSC_OPTIMIZATION.md)
-- Chris Frretz, "Beyond Sequential Consistency", CppCon.
+- Chris Fretz, "Beyond Sequential Consistency", CppCon.
 - "A Fast Lock-Free Queue for Shared-Memory Multiprocessors", 2009.

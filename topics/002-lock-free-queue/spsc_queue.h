@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <type_traits>
 #include <utility>
 
 namespace lockfree {
@@ -23,25 +24,17 @@ class SPSCQueueNaive {
  public:
   SPSCQueueNaive() : head_(0), tail_(0) {}
 
-  bool Push(const T& value) noexcept {
+  template <typename U>
+  bool Push(U&& value) noexcept(std::is_nothrow_assignable_v<T&, U&&>) {
     const size_t h = head_.load();
     const size_t t = tail_.load();
     if (Next(h) == t) return false;
-    buffer_[h] = value;
+    buffer_[h] = std::forward<U>(value);
     head_.store(Next(h));
     return true;
   }
 
-  bool Push(T&& value) noexcept {
-    const size_t h = head_.load();
-    const size_t t = tail_.load();
-    if (Next(h) == t) return false;
-    buffer_[h] = std::move(value);
-    head_.store(Next(h));
-    return true;
-  }
-
-  bool Pop(T& value) noexcept {
+  bool Pop(T& value) noexcept(std::is_nothrow_assignable_v<T&, T&&>) {
     const size_t h = head_.load();
     const size_t t = tail_.load();
     if (h == t) return false;
@@ -68,25 +61,17 @@ class SPSCQueueAcqRel {
  public:
   SPSCQueueAcqRel() : head_(0), tail_(0) {}
 
-  bool Push(const T& value) noexcept {
+  template <typename U>
+  bool Push(U&& value) noexcept(std::is_nothrow_assignable_v<T&, U&&>) {
     const size_t h = head_.load(std::memory_order_relaxed);
     const size_t t = tail_.load(std::memory_order_acquire);
     if (Next(h) == t) return false;
-    buffer_[h] = value;
+    buffer_[h] = std::forward<U>(value);
     head_.store(Next(h), std::memory_order_release);
     return true;
   }
 
-  bool Push(T&& value) noexcept {
-    const size_t h = head_.load(std::memory_order_relaxed);
-    const size_t t = tail_.load(std::memory_order_acquire);
-    if (Next(h) == t) return false;
-    buffer_[h] = std::move(value);
-    head_.store(Next(h), std::memory_order_release);
-    return true;
-  }
-
-  bool Pop(T& value) noexcept {
+  bool Pop(T& value) noexcept(std::is_nothrow_assignable_v<T&, T&&>) {
     const size_t h = head_.load(std::memory_order_acquire);
     const size_t t = tail_.load(std::memory_order_relaxed);
     if (h == t) return false;
@@ -113,25 +98,17 @@ class SPSCQueuePadded {
  public:
   SPSCQueuePadded() : head_(0), tail_(0) {}
 
-  bool Push(const T& value) noexcept {
+  template <typename U>
+  bool Push(U&& value) noexcept(std::is_nothrow_assignable_v<T&, U&&>) {
     const size_t h = head_.load(std::memory_order_relaxed);
     const size_t t = tail_.load(std::memory_order_acquire);
     if (Next(h) == t) return false;
-    buffer_[h] = value;
+    buffer_[h] = std::forward<U>(value);
     head_.store(Next(h), std::memory_order_release);
     return true;
   }
 
-  bool Push(T&& value) noexcept {
-    const size_t h = head_.load(std::memory_order_relaxed);
-    const size_t t = tail_.load(std::memory_order_acquire);
-    if (Next(h) == t) return false;
-    buffer_[h] = std::move(value);
-    head_.store(Next(h), std::memory_order_release);
-    return true;
-  }
-
-  bool Pop(T& value) noexcept {
+  bool Pop(T& value) noexcept(std::is_nothrow_assignable_v<T&, T&&>) {
     const size_t h = head_.load(std::memory_order_acquire);
     const size_t t = tail_.load(std::memory_order_relaxed);
     if (h == t) return false;
@@ -160,38 +137,33 @@ class SPSCQueueCached {
   static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two");
 
  public:
-  SPSCQueueCached() : head_(0), tail_cache_(0), tail_(0), head_cache_(0) {}
+  SPSCQueueCached() {
+    producer_.head.store(0);
+    producer_.tail_cache = 0;
+    consumer_.tail.store(0);
+    consumer_.head_cache = 0;
+  }
 
-  bool Push(const T& value) noexcept {
-    const size_t h = head_.load(std::memory_order_relaxed);
-    if (Next(h) == tail_cache_) {
-      tail_cache_ = tail_.load(std::memory_order_acquire);
-      if (Next(h) == tail_cache_) return false;
+  template <typename U>
+  bool Push(U&& value) noexcept(std::is_nothrow_assignable_v<T&, U&&>) {
+    const size_t h = producer_.head.load(std::memory_order_relaxed);
+    if (Next(h) == producer_.tail_cache) {
+      producer_.tail_cache = consumer_.tail.load(std::memory_order_acquire);
+      if (Next(h) == producer_.tail_cache) return false;
     }
-    buffer_[h] = value;
-    head_.store(Next(h), std::memory_order_release);
+    buffer_[h] = std::forward<U>(value);
+    producer_.head.store(Next(h), std::memory_order_release);
     return true;
   }
 
-  bool Push(T&& value) noexcept {
-    const size_t h = head_.load(std::memory_order_relaxed);
-    if (Next(h) == tail_cache_) {
-      tail_cache_ = tail_.load(std::memory_order_acquire);
-      if (Next(h) == tail_cache_) return false;
-    }
-    buffer_[h] = std::move(value);
-    head_.store(Next(h), std::memory_order_release);
-    return true;
-  }
-
-  bool Pop(T& value) noexcept {
-    const size_t t = tail_.load(std::memory_order_relaxed);
-    if (head_cache_ == t) {
-      head_cache_ = head_.load(std::memory_order_acquire);
-      if (head_cache_ == t) return false;
+  bool Pop(T& value) noexcept(std::is_nothrow_assignable_v<T&, T&&>) {
+    const size_t t = consumer_.tail.load(std::memory_order_relaxed);
+    if (consumer_.head_cache == t) {
+      consumer_.head_cache = producer_.head.load(std::memory_order_acquire);
+      if (consumer_.head_cache == t) return false;
     }
     value = std::move(buffer_[t]);
-    tail_.store(Next(t), std::memory_order_release);
+    consumer_.tail.store(Next(t), std::memory_order_release);
     return true;
   }
 
@@ -199,12 +171,16 @@ class SPSCQueueCached {
   size_t Next(size_t i) const noexcept { return (i + 1) & (Capacity - 1); }
 
   // Producer-owned cache line
-  alignas(hardware_destructive_interference_size) std::atomic<size_t> head_;
-  size_t tail_cache_;
+  struct alignas(hardware_destructive_interference_size) ProducerData {
+    std::atomic<size_t> head;
+    size_t tail_cache;
+  } producer_;
 
   // Consumer-owned cache line
-  alignas(hardware_destructive_interference_size) std::atomic<size_t> tail_;
-  size_t head_cache_;
+  struct alignas(hardware_destructive_interference_size) ConsumerData {
+    std::atomic<size_t> tail;
+    size_t head_cache;
+  } consumer_;
 
   // Buffer on separate cache line
   alignas(hardware_destructive_interference_size) T buffer_[Capacity];
