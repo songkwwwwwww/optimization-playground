@@ -9,4 +9,6 @@ user.bazelrc
 .vscode
 .cache
 docs/
-
+!/docs/
+/docs/*
+!/docs/interesting_topics.md
