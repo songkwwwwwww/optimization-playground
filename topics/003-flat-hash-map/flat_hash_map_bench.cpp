@@ -20,13 +20,17 @@ void BenchmarkInsertSequential(benchmark::State& state) {
   const std::vector<Entry> entries = MakeSequentialEntries(count);
 
   for (auto _ : state) {
-    Map map;
-    map.reserve(entries.size());
-    for (const Entry& entry : entries) {
-      benchmark::DoNotOptimize(map.emplace(entry.key, entry.value));
+    {
+      Map map;
+      map.reserve(entries.size());
+      for (const Entry& entry : entries) {
+        benchmark::DoNotOptimize(map.emplace(entry.key, entry.value));
+      }
+      benchmark::DoNotOptimize(map);
+      benchmark::ClobberMemory();
+      state.PauseTiming();
     }
-    benchmark::DoNotOptimize(map);
-    benchmark::ClobberMemory();
+    state.ResumeTiming();
   }
 
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(count));
@@ -38,13 +42,17 @@ void BenchmarkInsertRandomized(benchmark::State& state) {
   const std::vector<Entry> entries = MakeRandomizedEntries(count);
 
   for (auto _ : state) {
-    Map map;
-    map.reserve(entries.size());
-    for (const Entry& entry : entries) {
-      benchmark::DoNotOptimize(map.emplace(entry.key, entry.value));
+    {
+      Map map;
+      map.reserve(entries.size());
+      for (const Entry& entry : entries) {
+        benchmark::DoNotOptimize(map.emplace(entry.key, entry.value));
+      }
+      benchmark::DoNotOptimize(map);
+      benchmark::ClobberMemory();
+      state.PauseTiming();
     }
-    benchmark::DoNotOptimize(map);
-    benchmark::ClobberMemory();
+    state.ResumeTiming();
   }
 
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(count));

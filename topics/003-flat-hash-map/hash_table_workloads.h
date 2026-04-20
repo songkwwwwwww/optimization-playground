@@ -108,7 +108,7 @@ template <typename Map>
 std::uint64_t SumIterationValues(const Map& map) {
   std::uint64_t sum = 0;
   for (const auto& [key, value] : map) {
-    sum += Mix64(key) ^ value;
+    sum += key ^ value;
   }
   return sum;
 }
