@@ -28,6 +28,10 @@ Explores the "purgatory" of matrix multiplication, from naive $O(N^3)$ loops to 
 A study on concurrent data structures without traditional mutexes.
 - **Key Techniques:** SPSC (Single Producer Single Consumer), CAS (Compare-and-Swap), Memory Barriers, Cache-line alignment.
 
+### 3. [Flat Hash Map](topics/003-flat-hash-map)
+A benchmark-driven comparison between `std::unordered_map` and `absl::flat_hash_map`.
+- **Key Techniques:** Cache-friendly hash tables, open addressing, pointer chasing, lookup and iteration benchmarks.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
