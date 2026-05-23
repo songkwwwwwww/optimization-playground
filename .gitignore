@@ -10,3 +10,6 @@ user.bazelrc
 .cache
 docs/
 
+AGENTS.md
+CLAUDE.md
+GEMINI.md
