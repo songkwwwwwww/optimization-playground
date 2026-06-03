@@ -89,19 +89,19 @@ the interesting contrast is a loop that uses byte-lane operations such as
 compiler keeps more work in byte/vector lanes before doing the final horizontal
 reduction.
 
-### Planned Implementations
+### Implementations
 
 - `StdCountIfEven`: uses `std::count_if` as the ordinary STL baseline.
 - `CountIfEvenU8`: uses an explicit `std::uint8_t` accumulator when the result
   is known to fit in one byte.
-- `CountIfEvenU16` or `CountIfEvenU32`: extends the same idea to wider known
+- `CountIfEvenU16` and `CountIfEvenU32`: extend the same idea to wider known
   result ranges.
 
-### Planned Tests and Benchmarks
+### Tests and Benchmarks
 
-The correctness tests should generate buffers whose even-value count is known
-to fit in the chosen accumulator type. The benchmark should compare the STL
-baseline against the narrow-accumulator variants across several buffer sizes.
+The correctness tests generate buffers whose even-value count is known to fit
+in the chosen accumulator type. The benchmark compares the STL baseline against
+the narrow-accumulator variants across several buffer sizes.
 
 This experiment has a stronger precondition than the fake-length search:
 overflow is part of the design space. If the true count can exceed the
@@ -112,21 +112,54 @@ be interpreted as a modulo count.
 
 ### Correctness
 
+Run every implemented experiment test:
+
 ```bash
-bazel test //topics/005-compiler-auto-vectorization-experiments:scan_test
+bazel test //topics/005-compiler-auto-vectorization-experiments:all_tests
 ```
+
+Run only experiment 1:
+
+```bash
+bazel test //topics/005-compiler-auto-vectorization-experiments:experiment1_search_test
+```
+
+The underlying compatibility target is still available as `:scan_test`.
+
+Run only experiment 2:
+
+```bash
+bazel test //topics/005-compiler-auto-vectorization-experiments:experiment2_count_test
+```
+
+The underlying compatibility target is still available as `:count_even_test`.
 
 ### Benchmarks
 
+Run experiment 1:
+
 ```bash
-bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:scan_bench
+bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:experiment1_search_bench
 ```
 
 To focus on the string scan:
 
 ```bash
-bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:scan_bench -- \
+bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:experiment1_search_bench -- \
   --benchmark_filter="Strlen"
+```
+
+Run experiment 2:
+
+```bash
+bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:experiment2_count_bench
+```
+
+To compare only the STL baseline and the `uint8_t` accumulator:
+
+```bash
+bazel run -c opt //topics/005-compiler-auto-vectorization-experiments:experiment2_count_bench -- \
+  --benchmark_filter="StdCountIfEven|CountIfEvenU8"
 ```
 
 ## What to Observe
