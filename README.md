@@ -28,6 +28,12 @@ Explores the "purgatory" of matrix multiplication, from naive $O(N^3)$ loops to 
 A study on concurrent data structures without traditional mutexes.
 - **Key Techniques:** SPSC (Single Producer Single Consumer), CAS (Compare-and-Swap), Memory Barriers, Cache-line alignment.
 
+### 5. [Compiler Auto-vectorization Experiments](topics/005-compiler-auto-vectorization-experiments)
+Experiments with shaping C++ loops so compilers can potentially emit better
+SIMD code.
+- **Key Techniques:** Auto-vectorization, compiler behavior, sentinel scans,
+  accumulator precision, benchmark-driven assembly inspection.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
